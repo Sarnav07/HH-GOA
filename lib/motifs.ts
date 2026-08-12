@@ -83,6 +83,137 @@ export function drawPalm(
   ctx.restore();
 }
 
+/**
+ * Cocktail glass: bowl on a stem and foot, with a straw and a fruit wedge.
+ * `y` is the base, so it stands on the same horizon as everything else.
+ */
+export function drawCocktail(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  h: number,
+  stroke: string,
+  lineWidth: number,
+) {
+  const bowl = h * 0.46;
+  const rim = y - h;
+  const half = bowl * 0.62;
+
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Bowl, rim across the top down to the point where the stem starts.
+  ctx.beginPath();
+  ctx.moveTo(x - half, rim);
+  ctx.lineTo(x + half, rim);
+  ctx.lineTo(x, rim + bowl);
+  ctx.closePath();
+  ctx.stroke();
+
+  // Stem and foot.
+  ctx.beginPath();
+  ctx.moveTo(x, rim + bowl);
+  ctx.lineTo(x, y);
+  ctx.moveTo(x - h * 0.2, y);
+  ctx.lineTo(x + h * 0.2, y);
+  ctx.stroke();
+
+  // Straw leaning out of the glass.
+  ctx.beginPath();
+  ctx.moveTo(x + half * 0.25, rim + bowl * 0.45);
+  ctx.lineTo(x + half * 1.1, rim - h * 0.22);
+  ctx.stroke();
+
+  // Fruit wedge hooked on the rim.
+  ctx.beginPath();
+  ctx.arc(x - half * 0.92, rim, h * 0.11, Math.PI * 0.15, Math.PI * 1.15);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Beach parasol: scalloped canopy on a pole, planted at `y`. */
+export function drawParasol(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  h: number,
+  stroke: string,
+  lineWidth: number,
+) {
+  const top = y - h;
+  const span = h * 0.62;
+  const scallops = 4;
+
+  ctx.save();
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // Canopy edge, drawn as a run of shallow arcs so it reads as fabric panels.
+  const edgeY = top + h * 0.24;
+  ctx.beginPath();
+  ctx.moveTo(x - span, edgeY);
+  for (let i = 0; i < scallops; i++) {
+    const x0 = x - span + (i * span * 2) / scallops;
+    const x1 = x - span + ((i + 1) * span * 2) / scallops;
+    ctx.quadraticCurveTo((x0 + x1) / 2, edgeY + h * 0.1, x1, edgeY);
+  }
+  ctx.stroke();
+
+  // Dome from the edge up to the finial.
+  ctx.beginPath();
+  ctx.moveTo(x - span, edgeY);
+  ctx.quadraticCurveTo(x, top - h * 0.16, x + span, edgeY);
+  ctx.stroke();
+
+  // Panel ribs and the pole.
+  ctx.beginPath();
+  ctx.moveTo(x - span * 0.5, edgeY + h * 0.04);
+  ctx.lineTo(x, top);
+  ctx.moveTo(x + span * 0.5, edgeY + h * 0.04);
+  ctx.lineTo(x, top);
+  ctx.moveTo(x, top);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Surfboard stood on its tail, leaning. `y` is where the tail meets ground. */
+export function drawSurfboard(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  h: number,
+  stroke: string,
+  lineWidth: number,
+  lean = 1,
+) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate((lean * 11 * Math.PI) / 180);
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = lineWidth;
+  ctx.lineJoin = "round";
+
+  const w = h * 0.26;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.bezierCurveTo(-w, -h * 0.28, -w, -h * 0.74, 0, -h);
+  ctx.bezierCurveTo(w, -h * 0.74, w, -h * 0.28, 0, 0);
+  ctx.stroke();
+
+  // Stringer down the centre.
+  ctx.beginPath();
+  ctx.moveTo(0, -h * 0.1);
+  ctx.lineTo(0, -h * 0.9);
+  ctx.stroke();
+  ctx.restore();
+}
+
 /** Loose horizontal contours, the reference's landscape shorthand. */
 export function drawContours(
   ctx: CanvasRenderingContext2D,

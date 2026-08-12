@@ -27,10 +27,13 @@ import {
 import { coastImage } from "./coast";
 import {
   drawBarcode,
+  drawCocktail,
   drawContours,
   drawDotGrid,
   drawPalm,
+  drawParasol,
   drawStripedSun,
+  drawSurfboard,
   roundRect,
 } from "./motifs";
 
@@ -191,6 +194,60 @@ function drawGrain(
   ctx.restore();
 }
 
+/**
+ * The beachscape that fills the cream gutters flanking the portrait.
+ *
+ * One scene rather than two decorations: a single horizon runs the width of the
+ * card and everything stands on it, which is what stops the elements reading as
+ * scattered clip-art. Drawn before the portrait so the photo circle occludes
+ * the middle, making the scene look like it continues behind the subject.
+ *
+ * Tone is stated once here. If it ever competes with the portrait or the name,
+ * lower the alpha rather than removing elements.
+ */
+function drawBeachScene(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  u: number,
+) {
+  const ink = BRAND.forest;
+  const lw = 2.4 * u;
+  const pad = 74 * u;
+  const left = x + pad;
+  const right = x + w - pad;
+  const horizon = y + 690 * u;
+
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+
+  // Sea: the horizon plus a short band of swell below it.
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(left, horizon);
+  ctx.lineTo(right, horizon);
+  ctx.stroke();
+
+  ctx.save();
+  ctx.globalAlpha = 0.16;
+  drawContours(ctx, left, horizon + 13 * u, w - pad * 2, 26 * u, ink, 2 * u, 3);
+  ctx.restore();
+
+  // Left: palms at unequal heights, plus a board leaning on the sand.
+  drawPalm(ctx, left + 54 * u, horizon, 152 * u, ink, lw, 1);
+  drawPalm(ctx, left + 132 * u, horizon, 108 * u, ink, lw * 0.9, -1);
+  drawSurfboard(ctx, left + 208 * u, horizon, 96 * u, ink, lw * 0.9, 1);
+
+  // Right: parasol with a drink beside it. Deliberately not a mirror of left.
+  drawParasol(ctx, right - 118 * u, horizon, 132 * u, ink, lw);
+  drawCocktail(ctx, right - 38 * u, horizon, 64 * u, ink, lw * 0.9);
+
+  ctx.restore();
+}
+
 /* --------------------------------------------------------------- the badge */
 
 /**
@@ -328,6 +385,10 @@ function drawBadge(
 
   void hackerW;
   ctx.restore();
+
+  /* ----------------------------------------------------------- beachscape */
+
+  drawBeachScene(ctx, x, y, w, u);
 
   /* --------------------------------------------------------------- photo */
 
