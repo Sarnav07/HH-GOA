@@ -40,7 +40,7 @@ export default function Actions({ preview, name, ready }: Props) {
     setDownloading(true);
     try {
       const blob = await preview.current!.toBlob("card");
-      saveBlob(blob, `hh-goa-2026-${slug(name)}.png`);
+      saveBlob(blob, `hacker-house-goa-2026-${slug(name)}.png`);
     } catch {
       setError("Could not build the image. Try again.");
     } finally {
@@ -53,7 +53,7 @@ export default function Actions({ preview, name, ready }: Props) {
     setSharing(true);
     try {
       const card = await preview.current!.toBlob("card");
-      const file = new File([card], `hh-goa-2026-${slug(name)}.png`, {
+      const file = new File([card], `hacker-house-goa-2026-${slug(name)}.png`, {
         type: "image/png",
       });
 
@@ -96,7 +96,7 @@ export default function Actions({ preview, name, ready }: Props) {
   }
 
   const base =
-    "flex h-12 flex-1 items-center justify-center gap-2 rounded-full px-5 font-display text-[15px] font-bold whitespace-nowrap transition-transform duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45";
+    "flex h-12 flex-1 items-center justify-center gap-2 rounded-full px-5 font-sans text-[15px] font-bold whitespace-nowrap transition-transform duration-150 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45";
 
   return (
     <div>
@@ -105,7 +105,7 @@ export default function Actions({ preview, name, ready }: Props) {
           type="button"
           onClick={download}
           disabled={!ready || downloading}
-          className={`${base} bg-terracotta text-cream hover:bg-terracotta-lift`}
+          className={`${base} bg-pink-deep text-cream hover:bg-pink`}
         >
           {downloading ? (
             <Spinner size={18} weight="bold" className="animate-spin" />
@@ -119,7 +119,7 @@ export default function Actions({ preview, name, ready }: Props) {
           type="button"
           onClick={share}
           disabled={!ready || sharing}
-          className={`${base} border border-sand/45 text-cream hover:border-cream hover:bg-cream/5`}
+          className={`${base} border border-forest/60 text-forest hover:border-forest hover:bg-forest/5`}
         >
           {sharing ? (
             <Spinner size={18} weight="bold" className="animate-spin" />
@@ -131,11 +131,11 @@ export default function Actions({ preview, name, ready }: Props) {
       </div>
 
       {error ? (
-        <p role="alert" className="mt-2 font-mono text-[12px] text-terracotta-lift">
+        <p role="alert" className="mt-2 font-mono text-[12px] text-pink-deep">
           {error}
         </p>
       ) : !ready ? (
-        <p className="mt-2 font-mono text-[11px] text-sand/70">
+        <p className="mt-2 font-mono text-[11px] text-forest/80">
           Add a photo and your name to unlock these.
         </p>
       ) : null}

@@ -50,7 +50,7 @@ export default function Dropzone({ onPhoto, hasPhoto }: Props) {
     <div>
       <label
         htmlFor="photo"
-        className="mb-2 block font-mono text-[11px] tracking-[0.18em] text-sand uppercase"
+        className="mb-2 block font-mono text-[11px] tracking-[0.18em] text-forest uppercase"
       >
         Your photo
       </label>
@@ -68,8 +68,8 @@ export default function Dropzone({ onPhoto, hasPhoto }: Props) {
         }}
         className={`rounded-[16px] border border-dashed p-4 transition-colors duration-200 ${
           over
-            ? "border-terracotta bg-terracotta/10"
-            : "border-sand/55 bg-indigo/40"
+            ? "border-pink-deep bg-pink/10"
+            : "border-forest/60 bg-cream-lift"
         }`}
       >
         <input
@@ -90,7 +90,7 @@ export default function Dropzone({ onPhoto, hasPhoto }: Props) {
           disabled={busy}
           className="flex w-full items-center gap-3 rounded-[8px] px-1 py-2 text-left transition-transform duration-150 active:scale-[0.99] disabled:opacity-70"
         >
-          <span className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-terracotta text-cream">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-forest text-gold">
             {busy ? (
               <Spinner size={22} weight="bold" className="animate-spin" />
             ) : hasPhoto ? (
@@ -100,14 +100,14 @@ export default function Dropzone({ onPhoto, hasPhoto }: Props) {
             )}
           </span>
           <span className="min-w-0">
-            <span className="block font-display text-[15px] font-bold text-cream">
+            <span className="block font-sans text-[15px] font-bold text-forest-deep">
               {busy
                 ? "Reading your photo"
                 : hasPhoto
                   ? "Choose a different photo"
                   : "Upload a photo"}
             </span>
-            <span className="block font-mono text-[11px] text-sand/80">
+            <span className="block font-mono text-[11px] text-forest/80">
               JPG, PNG, or HEIC. Drop or paste one too.
             </span>
           </span>
@@ -115,11 +115,11 @@ export default function Dropzone({ onPhoto, hasPhoto }: Props) {
       </div>
 
       {error ? (
-        <p role="alert" className="mt-2 font-mono text-[12px] text-terracotta-lift">
+        <p role="alert" className="mt-2 font-mono text-[12px] text-pink-deep">
           {error}
         </p>
       ) : hasPhoto ? (
-        <p className="mt-2 font-mono text-[11px] text-sand/70">
+        <p className="mt-2 font-mono text-[11px] text-forest/80">
           Drag the card to reposition. Pinch or use the zoom slider.
         </p>
       ) : null}

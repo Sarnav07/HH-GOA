@@ -5,6 +5,8 @@
  * every first draw on this.
  */
 const FACES = [
+  '900 16px "Playfair Display"',
+  '700 16px "Playfair Display"',
   '800 16px "Cabinet Grotesk"',
   '700 16px "Cabinet Grotesk"',
   '500 16px "Cabinet Grotesk"',

@@ -1,23 +1,39 @@
 /**
- * Azulejo Dusk - the single source of truth for brand colour.
- * These values are mirrored in app/globals.css @theme. Canvas cannot read CSS
- * custom properties cheaply, so the card renderer reads them from here.
+ * Hacker House Goa 2026 - the single source of truth for brand colour.
+ * Values sampled by histogram off the official builder-pass artwork. Mirrored
+ * in app/globals.css @theme; canvas cannot read CSS custom properties cheaply,
+ * so the card renderer reads them from here.
  */
 export const BRAND = {
-  inkDeep: "#091628",
-  ink: "#0e1f3c",
-  indigo: "#16305c",
-  indigoLift: "#1d3d70",
-  tile: "#2f5d9e",
-  cream: "#f4ede1",
-  sand: "#d9c7a7",
-  terracotta: "#c75b39",
-  terracottaLift: "#d96f4d",
+  cream: "#f0e8d0",
+  creamLift: "#f7f2e2",
+  tan: "#e0d8b8",
+  forest: "#004838",
+  forestLift: "#065c47",
+  forestDeep: "#001a12",
+  gold: "#f8d028",
+  goldDeep: "#d8a800",
+  pink: "#f02878",
+  pinkDeep: "#c81d5f",
 } as const;
 
-export const DISPLAY_FONT = "Cabinet Grotesk";
+/**
+ * Two accents is a deliberate override of the usual one-accent rule: the event
+ * brand genuinely carries both. Roles are fixed and never swap.
+ *   gold = the builder title and lockup highlight
+ *   pink = actions, the hashtag, and framing
+ * Gold is fill-only on light grounds. As text on cream it fails WCAG badly.
+ */
+
+export const DISPLAY_FONT = "Playfair Display";
+export const SANS_FONT = "Cabinet Grotesk";
 export const MONO_FONT = "JetBrains Mono";
 
 export const EVENT_NAME = "HH GOA 2026";
+export const EVENT_DATES = "28-31 OCT 2026";
+export const EVENT_PLACE = "GOA, INDIA";
+export const EVENT_TAGLINE = "CODE · CONNECT · CHILL · REPEAT";
+export const EVENT_MISSION = "BUILD · SHIP · REPEAT";
+export const EVENT_MOTTO = "LESS NOISE. MORE SIGNAL.";
 export const HASHTAG = "#FrameInGoa";
-export const TWEET_CAPTION = `I'm building at HH Goa 2026. ${HASHTAG}`;
+export const TWEET_CAPTION = `I'm building at Hacker House Goa 2026. ${HASHTAG}`;

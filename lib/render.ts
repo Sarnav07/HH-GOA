@@ -6,14 +6,39 @@
  * drift apart. Everything is hand-composed on a 2D context: no html2canvas
  * (mis-renders modern CSS, slow) and no server round trip (the brief asks for
  * near-instant, and a network hop is not that).
+ *
+ * Composition follows the official Hacker House Goa builder pass: forest
+ * header block over a duotone coastline, circular portrait in gold and pink
+ * rings, gold title pill, tan info grid, barcode and hashtag footer.
  */
-import { BRAND, DISPLAY_FONT, EVENT_NAME, HASHTAG, MONO_FONT } from "./brand";
-import { azulejoPattern } from "./azulejo";
+import {
+  BRAND,
+  DISPLAY_FONT,
+  EVENT_DATES,
+  EVENT_MISSION,
+  EVENT_MOTTO,
+  EVENT_NAME,
+  EVENT_PLACE,
+  EVENT_TAGLINE,
+  HASHTAG,
+  MONO_FONT,
+  SANS_FONT,
+} from "./brand";
+import { coastImage } from "./coast";
+import {
+  drawBarcode,
+  drawContours,
+  drawDotGrid,
+  drawPalm,
+  drawStripedSun,
+  roundRect,
+} from "./motifs";
 
 export type CardState = {
   name: string;
   stack: string;
   title: string;
+  serial: string;
   photo: ImageBitmap | null;
   /** Photo pan, in units of the photo window size. 0 is centred. */
   offsetX: number;
@@ -32,16 +57,17 @@ export const SIZES = {
 } as const;
 
 /**
- * The photo window in card pixels. Exported because the drag handler has to
- * translate screen movement into the same units drawPhoto pans in, and the two
- * silently disagreeing would make dragging feel wrong on one axis.
+ * The circular photo window in card pixels. Exported because the drag handler
+ * has to translate screen movement into the same units drawPhoto pans in, and
+ * the two silently disagreeing would make dragging feel wrong on one axis.
  */
-export const PHOTO_WINDOW = { w: 1080 - 64 * 2, h: 700 } as const;
+export const PHOTO_WINDOW = { cx: 540, cy: 540, r: 180 } as const;
 
 export const emptyState = (): CardState => ({
   name: "",
   stack: "",
   title: "",
+  serial: "HH-GOA-000000",
   photo: null,
   offsetX: 0,
   offsetY: 0,
@@ -49,18 +75,6 @@ export const emptyState = (): CardState => ({
 });
 
 /* ------------------------------------------------------------------ helpers */
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  ctx.beginPath();
-  ctx.roundRect(x, y, w, h, r);
-}
 
 /**
  * Shrinks the font until the text fits, then truncates as a last resort.
@@ -103,14 +117,17 @@ function drawTracked(
   x: number,
   y: number,
   tracking: number,
-  align: "left" | "right" = "left",
+  align: "left" | "right" | "center" = "left",
 ) {
   const chars = [...text];
   const width =
     chars.reduce((sum, c) => sum + ctx.measureText(c).width, 0) +
     tracking * Math.max(0, chars.length - 1);
 
-  let cursor = align === "right" ? x - width : x;
+  let cursor = x;
+  if (align === "right") cursor = x - width;
+  if (align === "center") cursor = x - width / 2;
+
   for (const c of chars) {
     ctx.fillText(c, cursor, y);
     cursor += ctx.measureText(c).width + tracking;
@@ -119,53 +136,30 @@ function drawTracked(
 }
 
 /**
- * Cover-fits the photo into the window, then applies the user's pan and zoom.
- * Portrait, landscape, square, and off-centre crops all land somewhere sane
- * without the user being asked to crop first.
+ * Cover-fits the photo into the circular window, then applies the user's pan
+ * and zoom. Portrait, landscape, square, and off-centre crops all land
+ * somewhere sane without the user being asked to crop first.
  */
 function drawPhoto(
   ctx: CanvasRenderingContext2D,
   photo: ImageBitmap,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
+  cx: number,
+  cy: number,
+  r: number,
   state: CardState,
 ) {
-  const scale = Math.max(w / photo.width, h / photo.height) * state.zoom;
+  const d = r * 2;
+  const scale = Math.max(d / photo.width, d / photo.height) * state.zoom;
   const dw = photo.width * scale;
   const dh = photo.height * scale;
 
   // Pan is clamped so the photo can never be dragged clear of its window.
-  const slackX = Math.max(0, (dw - w) / 2);
-  const slackY = Math.max(0, (dh - h) / 2);
-  const panX = Math.max(-slackX, Math.min(slackX, state.offsetX * w));
-  const panY = Math.max(-slackY, Math.min(slackY, state.offsetY * h));
+  const slackX = Math.max(0, (dw - d) / 2);
+  const slackY = Math.max(0, (dh - d) / 2);
+  const panX = Math.max(-slackX, Math.min(slackX, state.offsetX * d));
+  const panY = Math.max(-slackY, Math.min(slackY, state.offsetY * d));
 
-  ctx.drawImage(
-    photo,
-    x + (w - dw) / 2 + panX,
-    y + (h - dh) / 2 + panY,
-    dw,
-    dh,
-  );
-}
-
-/** Perforation dots, the detail that reads the card as a physical badge. */
-function drawPerforation(
-  ctx: CanvasRenderingContext2D,
-  x1: number,
-  x2: number,
-  y: number,
-  step: number,
-  r: number,
-) {
-  ctx.fillStyle = BRAND.tile;
-  for (let x = x1; x <= x2; x += step) {
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ctx.drawImage(photo, cx - dw / 2 + panX, cy - dh / 2 + panY, dw, dh);
 }
 
 /** Fine grain. Kept subtle and drawn once per render, never animated. */
@@ -176,7 +170,7 @@ function drawGrain(
   w: number,
   h: number,
 ) {
-  const dots = Math.floor((w * h) / 900);
+  const dots = Math.floor((w * h) / 1100);
 
   // xorshift32. A plain LCG here multiplied past 2^53, lost precision, and
   // collapsed the noise into visible banding.
@@ -189,8 +183,8 @@ function drawGrain(
   };
 
   ctx.save();
-  ctx.globalAlpha = 0.04;
-  ctx.fillStyle = BRAND.cream;
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = BRAND.forestDeep;
   for (let i = 0; i < dots; i++) {
     ctx.fillRect(x + rand() * w, y + rand() * h, 1.4, 1.4);
   }
@@ -212,168 +206,285 @@ function drawBadge(
   h: number,
 ) {
   const u = w / 1080; // Everything below is expressed in card units.
-  const pad = 64 * u;
-  // Laid out in card units, then scaled, so both variants share one geometry.
+  const pad = 74 * u;
+  const innerW = w - pad * 2;
 
   ctx.save();
-  roundRect(ctx, x, y, w, h, 40 * u);
+  roundRect(ctx, x, y, w, h, 26 * u);
   ctx.clip();
 
-  // Ground.
-  const ground = ctx.createLinearGradient(x, y, x, y + h);
-  ground.addColorStop(0, BRAND.indigo);
-  ground.addColorStop(1, BRAND.ink);
-  ctx.fillStyle = ground;
+  /* ------------------------------------------------------------- framing */
+
+  // Pink outer frame, gold hairline inset, cream body. The reference's
+  // three-step edge, which is what makes it read as printed stock.
+  ctx.fillStyle = BRAND.pink;
   ctx.fillRect(x, y, w, h);
 
-  // Azulejo band across the head of the card.
-  const bandH = 232 * u;
+  ctx.fillStyle = BRAND.cream;
+  roundRect(ctx, x + 18 * u, y + 18 * u, w - 36 * u, h - 36 * u, 16 * u);
+  ctx.fill();
+
+  ctx.strokeStyle = BRAND.gold;
+  ctx.lineWidth = 3 * u;
+  roundRect(ctx, x + 30 * u, y + 30 * u, w - 60 * u, h - 60 * u, 12 * u);
+  ctx.stroke();
+
+  /* -------------------------------------------------------------- header */
+
+  const headX = x + 40 * u;
+  const headY = y + 40 * u;
+  const headW = w - 80 * u;
+  const headH = 400 * u;
+
   ctx.save();
-  ctx.beginPath();
-  ctx.rect(x, y, w, bandH);
+  roundRect(ctx, headX, headY, headW, headH, 8 * u);
   ctx.clip();
-  ctx.globalAlpha = 0.55;
-  ctx.translate(x, y);
-  ctx.fillStyle = azulejoPattern(ctx, Math.round(232 * u), {
-    bg: BRAND.indigo,
-    line: BRAND.tile,
-    accent: BRAND.terracotta,
-  });
-  ctx.fillRect(0, 0, w, bandH);
+
+  ctx.fillStyle = BRAND.forest;
+  ctx.fillRect(headX, headY, headW, headH);
+
+  // Duotone coastline, washed back so the lockup stays the loudest thing here.
+  const coast = coastImage();
+  if (coast) {
+    ctx.save();
+    ctx.globalAlpha = 0.58;
+    ctx.drawImage(coast, headX, headY, headW, headH);
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = 0.44;
+    ctx.fillStyle = BRAND.forest;
+    ctx.fillRect(headX, headY, headW, headH);
+    ctx.restore();
+  }
+
+  // Contour lines and the banded sun, the reference's landscape shorthand.
+  ctx.save();
+  ctx.globalAlpha = 0.3;
+  drawContours(
+    ctx,
+    headX,
+    headY + headH * 0.42,
+    headW,
+    headH * 0.55,
+    BRAND.gold,
+    2 * u,
+    8,
+  );
   ctx.restore();
 
-  // Band foot, a terracotta hairline that anchors the pattern.
-  ctx.fillStyle = BRAND.terracotta;
-  ctx.fillRect(x, y + bandH - 4 * u, w, 4 * u);
-
-  // Event mark, sitting on the band.
-  ctx.fillStyle = BRAND.cream;
-  ctx.textBaseline = "middle";
-  ctx.font = `800 ${44 * u}px "${DISPLAY_FONT}"`;
-  drawTracked(ctx, EVENT_NAME, x + pad, y + bandH / 2, 4 * u);
-
-  ctx.fillStyle = BRAND.sand;
-  ctx.font = `400 ${24 * u}px "${MONO_FONT}"`;
-  drawTracked(ctx, "BUILDER PASS", x + w - pad, y + bandH / 2, 3 * u, "right");
-
-  /* ------------------------------------------------------------- photo */
-
-  const photoX = x + pad;
-  const photoY = y + bandH + 56 * u;
-  const photoW = PHOTO_WINDOW.w * u;
-  const photoH = PHOTO_WINDOW.h * u;
-
-  // Whitewash mat behind the photo, the tile-and-plaster pairing.
-  ctx.fillStyle = BRAND.cream;
-  roundRect(
+  ctx.save();
+  ctx.globalAlpha = 0.85;
+  drawStripedSun(
     ctx,
-    photoX - 12 * u,
-    photoY - 12 * u,
-    photoW + 24 * u,
-    photoH + 24 * u,
-    28 * u,
+    headX + headW * 0.845,
+    headY + headH * 0.5,
+    56 * u,
+    BRAND.gold,
+    BRAND.forest,
   );
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+  drawPalm(ctx, headX + headW * 0.7, headY + headH * 0.66, 92 * u, BRAND.gold, 2.4 * u, 1);
+  drawPalm(ctx, headX + headW * 0.94, headY + headH * 0.72, 66 * u, BRAND.gold, 2.2 * u, -1);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  drawDotGrid(ctx, headX + headW * 0.72, headY + 30 * u, 9, 3, 13 * u, 2 * u, BRAND.pink);
+  ctx.restore();
+
+  /* ------------------------------------------------------- header type */
+
+  const tx = headX + 34 * u;
+
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = BRAND.gold;
+  ctx.font = `700 ${34 * u}px "${SANS_FONT}"`;
+  drawTracked(ctx, EVENT_NAME, tx, headY + 62 * u, 2 * u);
+
+  ctx.fillStyle = BRAND.cream;
+  ctx.font = `400 ${17 * u}px "${MONO_FONT}"`;
+  drawTracked(ctx, "OFFICIAL BUILDER PASS", tx, headY + 90 * u, 2.2 * u);
+
+  // The lockup, in the reference's tri-colour split.
+  const lockSize = 78 * u;
+  ctx.font = `900 ${lockSize}px "${DISPLAY_FONT}"`;
+  ctx.fillStyle = BRAND.cream;
+  const hackerW = drawTracked(ctx, "HACKER", tx, headY + 188 * u, 1 * u);
+
+  ctx.fillStyle = BRAND.pink;
+  const houseW = drawTracked(ctx, "HOUSE", tx, headY + 264 * u, 1 * u);
+
+  ctx.fillStyle = BRAND.gold;
+  ctx.font = `900 ${lockSize * 0.72}px "${DISPLAY_FONT}"`;
+  drawTracked(ctx, "GOA", tx + houseW + 20 * u, headY + 264 * u, 1 * u);
+
+  ctx.fillStyle = BRAND.gold;
+  ctx.font = `700 ${17 * u}px "${MONO_FONT}"`;
+  drawTracked(ctx, EVENT_TAGLINE, tx, headY + 322 * u, 1.6 * u);
+
+  void hackerW;
+  ctx.restore();
+
+  /* --------------------------------------------------------------- photo */
+
+  const cx = x + PHOTO_WINDOW.cx * u;
+  const cy = y + PHOTO_WINDOW.cy * u;
+  const r = PHOTO_WINDOW.r * u;
+
+  // Pink ring outside, gold ring inside, matching the reference's double edge.
+  ctx.fillStyle = BRAND.pink;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 20 * u, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = BRAND.gold;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r + 11 * u, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.save();
-  roundRect(ctx, photoX, photoY, photoW, photoH, 18 * u);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
   ctx.clip();
 
   if (state.photo) {
-    drawPhoto(ctx, state.photo, photoX, photoY, photoW, photoH, state);
+    drawPhoto(ctx, state.photo, cx, cy, r, state);
   } else {
-    // Empty state: azulejo fills the window rather than a grey placeholder.
+    ctx.fillStyle = BRAND.forest;
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+
     ctx.save();
-    ctx.translate(photoX, photoY);
-    ctx.fillStyle = azulejoPattern(ctx, Math.round(180 * u), {
-      bg: BRAND.indigo,
-      line: BRAND.indigoLift,
-      accent: BRAND.indigoLift,
-    });
-    ctx.fillRect(0, 0, photoW, photoH);
+    ctx.globalAlpha = 0.4;
+    drawContours(ctx, cx - r, cy - r * 0.2, r * 2, r * 1.2, BRAND.gold, 2 * u, 6);
     ctx.restore();
 
-    // Scrim, so the prompt stays legible over the busiest part of the motif.
-    const label = "YOUR PHOTO";
-    ctx.font = `400 ${26 * u}px "${MONO_FONT}"`;
-    const labelW = ctx.measureText(label).width + 56 * u;
-    ctx.fillStyle = BRAND.ink;
-    roundRect(
-      ctx,
-      photoX + photoW / 2 - labelW / 2,
-      photoY + photoH / 2 - 26 * u,
-      labelW,
-      52 * u,
-      26 * u,
-    );
-    ctx.fill();
-
     ctx.fillStyle = BRAND.cream;
-    ctx.textAlign = "center";
+    ctx.font = `400 ${21 * u}px "${MONO_FONT}"`;
     ctx.textBaseline = "middle";
-    ctx.fillText(label, photoX + photoW / 2, photoY + photoH / 2);
-    ctx.textAlign = "left";
+    drawTracked(ctx, "YOUR PHOTO", cx, cy, 2 * u, "center");
     ctx.textBaseline = "alphabetic";
   }
   ctx.restore();
 
-  /* -------------------------------------------------------------- copy */
-
-  const textTop = photoY + photoH + 74 * u;
-  const maxTextW = w - pad * 2;
+  /* ---------------------------------------------------------------- name */
 
   const name = state.name.trim() || "Your name";
-  ctx.fillStyle = BRAND.cream;
-  ctx.textBaseline = "alphabetic";
-  const fitted = fitText(ctx, name, maxTextW, 88 * u, 44 * u, 800, DISPLAY_FONT);
-  ctx.font = `800 ${fitted.size}px "${DISPLAY_FONT}"`;
-  ctx.fillText(fitted.text, x + pad, textTop);
+  ctx.fillStyle = BRAND.forest;
+  ctx.textAlign = "center";
+  const fitted = fitText(ctx, name, innerW - 40 * u, 76 * u, 38 * u, 900, DISPLAY_FONT);
+  ctx.font = `900 ${fitted.size}px "${DISPLAY_FONT}"`;
+  ctx.fillText(fitted.text, x + w / 2, y + 812 * u);
 
   const stack = state.stack.trim();
   if (stack) {
-    ctx.fillStyle = BRAND.sand;
-    const s = fitText(ctx, stack, maxTextW, 30 * u, 20 * u, 400, MONO_FONT);
-    ctx.font = `400 ${s.size}px "${MONO_FONT}"`;
-    ctx.fillText(s.text, x + pad, textTop + 46 * u);
+    ctx.fillStyle = BRAND.pinkDeep;
+    ctx.font = `700 ${22 * u}px "${MONO_FONT}"`;
+    ctx.textAlign = "left";
+    drawTracked(
+      ctx,
+      stack.toUpperCase(),
+      x + w / 2,
+      y + 850 * u,
+      2.4 * u,
+      "center",
+    );
   }
+  ctx.textAlign = "left";
 
-  // Builder title on its terracotta rule.
+  /* ----------------------------------------------------------- title pill */
+
   const title = state.title.trim();
   if (title) {
-    const ruleY = textTop + 96 * u;
-    ctx.fillStyle = BRAND.terracotta;
-    ctx.fillRect(x + pad, ruleY, 56 * u, 5 * u);
+    const pillY = y + 880 * u;
+    const pillH = 106 * u;
+    ctx.fillStyle = BRAND.gold;
+    roundRect(ctx, x + pad, pillY, innerW, pillH, 14 * u);
+    ctx.fill();
 
-    ctx.fillStyle = BRAND.terracottaLift;
-    ctx.textBaseline = "middle";
-    ctx.font = `700 ${30 * u}px "${DISPLAY_FONT}"`;
-    drawTracked(ctx, title.toUpperCase(), x + pad + 80 * u, ruleY + 3 * u, 3 * u);
-    ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = BRAND.forest;
+    ctx.font = `400 ${16 * u}px "${MONO_FONT}"`;
+    drawTracked(ctx, "BUILDER TITLE", x + w / 2, pillY + 36 * u, 2.4 * u, "center");
+
+    const t = fitText(
+      ctx,
+      title.toUpperCase(),
+      innerW - 56 * u,
+      36 * u,
+      20 * u,
+      800,
+      SANS_FONT,
+    );
+    ctx.font = `800 ${t.size}px "${SANS_FONT}"`;
+    ctx.fillStyle = BRAND.forestDeep;
+    drawTracked(ctx, t.text, x + w / 2, pillY + 78 * u, 1.6 * u, "center");
   }
 
-  /* --------------------------------------------------------- ticket stub */
+  /* ----------------------------------------------------------- info panel */
 
-  const stubY = y + h - 118 * u;
-  drawPerforation(ctx, x + 28 * u, x + w - 28 * u, stubY, 22 * u, 3.5 * u);
+  const infoY = y + 1008 * u;
+  const infoH = 176 * u;
+  ctx.fillStyle = BRAND.tan;
+  roundRect(ctx, x + pad, infoY, innerW, infoH, 14 * u);
+  ctx.fill();
+  ctx.strokeStyle = BRAND.forest;
+  ctx.lineWidth = 2 * u;
+  roundRect(ctx, x + pad, infoY, innerW, infoH, 14 * u);
+  ctx.stroke();
 
+  const colL = x + pad + 30 * u;
+  const colR = x + w / 2 + 16 * u;
+
+  const cell = (
+    label: string,
+    value: string,
+    cxx: number,
+    cyy: number,
+    valueColor: string,
+  ) => {
+    ctx.fillStyle = BRAND.forest;
+    ctx.font = `400 ${14 * u}px "${MONO_FONT}"`;
+    drawTracked(ctx, label, cxx, cyy, 2.2 * u);
+
+    ctx.fillStyle = valueColor;
+    ctx.font = `700 ${21 * u}px "${SANS_FONT}"`;
+    drawTracked(ctx, value, cxx, cyy + 30 * u, 0.6 * u);
+  };
+
+  cell("BASE CAMP", EVENT_PLACE, colL, infoY + 44 * u, BRAND.forestDeep);
+  cell("DATES", EVENT_DATES, colL, infoY + 114 * u, BRAND.forestDeep);
+  cell("MISSION", EVENT_MISSION, colR, infoY + 44 * u, BRAND.forestDeep);
+
+  ctx.fillStyle = BRAND.forest;
+  ctx.font = `400 ${14 * u}px "${MONO_FONT}"`;
+  drawTracked(ctx, EVENT_MOTTO, colR, infoY + 144 * u, 1.6 * u);
+
+  /* --------------------------------------------------------------- footer */
+
+  const footY = y + 1214 * u;
+  drawBarcode(ctx, x + pad, footY, 246 * u, 46 * u, state.serial, BRAND.forestDeep);
+
+  ctx.fillStyle = BRAND.forest;
+  ctx.font = `400 ${14 * u}px "${MONO_FONT}"`;
+  drawTracked(ctx, state.serial, x + pad, footY + 68 * u, 1.6 * u);
+
+  const tagW = 300 * u;
+  const tagX = x + w - pad - tagW;
+  ctx.fillStyle = BRAND.pink;
+  roundRect(ctx, tagX, footY - 4 * u, tagW, 56 * u, 28 * u);
+  ctx.fill();
+
+  ctx.fillStyle = BRAND.cream;
+  ctx.font = `800 ${24 * u}px "${SANS_FONT}"`;
   ctx.textBaseline = "middle";
-  ctx.fillStyle = BRAND.sand;
-  ctx.font = `400 ${26 * u}px "${MONO_FONT}"`;
-  drawTracked(ctx, "GOA, INDIA", x + pad, stubY + 60 * u, 3 * u);
-
-  ctx.fillStyle = BRAND.terracottaLift;
-  ctx.font = `700 ${28 * u}px "${DISPLAY_FONT}"`;
-  drawTracked(ctx, HASHTAG, x + w - pad, stubY + 60 * u, 2 * u, "right");
+  drawTracked(ctx, HASHTAG.toUpperCase(), tagX + tagW / 2, footY + 24 * u, 1.4 * u, "center");
   ctx.textBaseline = "alphabetic";
 
   drawGrain(ctx, x, y, w, h);
   ctx.restore();
-
-  // Card edge.
-  ctx.strokeStyle = "rgba(217, 199, 167, 0.22)";
-  ctx.lineWidth = 2 * u;
-  roundRect(ctx, x + 1, y + 1, w - 2, h - 2, 40 * u);
-  ctx.stroke();
 }
 
 /* --------------------------------------------------------------- entrypoint */
@@ -393,19 +504,19 @@ export function drawCard(
     return;
   }
 
-  // OG variant: the same badge, scaled down onto an azulejo ground so the
-  // link preview shows the real graphic instead of a centre-cropped slice.
-  ctx.fillStyle = BRAND.inkDeep;
+  // OG variant: the same badge, scaled down onto a forest ground so the link
+  // preview shows the real graphic instead of a centre-cropped slice.
+  ctx.fillStyle = BRAND.forest;
   ctx.fillRect(0, 0, w, h);
 
   ctx.save();
-  ctx.globalAlpha = 0.3;
-  ctx.fillStyle = azulejoPattern(ctx, 150, {
-    bg: BRAND.inkDeep,
-    line: BRAND.tile,
-    accent: BRAND.terracotta,
-  });
-  ctx.fillRect(0, 0, w, h);
+  ctx.globalAlpha = 0.25;
+  drawContours(ctx, 0, h * 0.3, w, h * 0.7, BRAND.gold, 2, 10);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.9;
+  drawStripedSun(ctx, w * 0.88, h * 0.24, 62, BRAND.gold, BRAND.forest);
   ctx.restore();
 
   const badgeH = h - 96;
@@ -414,25 +525,29 @@ export function drawCard(
   const badgeY = 48;
 
   ctx.save();
-  ctx.shadowColor = "rgba(9, 22, 40, 0.55)";
+  ctx.shadowColor = "rgba(0, 26, 18, 0.5)";
   ctx.shadowBlur = 48;
   ctx.shadowOffsetY = 16;
   drawBadge(ctx, state, badgeX, badgeY, badgeW, badgeH);
   ctx.restore();
 
   // Companion copy in the space beside the badge.
-  const railX = badgeX + badgeW + 64;
-  ctx.fillStyle = BRAND.cream;
+  const railX = badgeX + badgeW + 68;
   ctx.textBaseline = "alphabetic";
-  ctx.font = `800 64px "${DISPLAY_FONT}"`;
-  ctx.fillText("Building at", railX, h / 2 - 44);
-  ctx.fillText(EVENT_NAME, railX, h / 2 + 32);
 
-  ctx.fillStyle = BRAND.terracottaLift;
-  ctx.font = `700 32px "${DISPLAY_FONT}"`;
-  ctx.textBaseline = "middle";
-  drawTracked(ctx, HASHTAG, railX, h / 2 + 92, 2);
-  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = BRAND.cream;
+  ctx.font = `900 62px "${DISPLAY_FONT}"`;
+  ctx.fillText("HACKER", railX, h / 2 - 46);
+  ctx.fillStyle = BRAND.pink;
+  ctx.fillText("HOUSE", railX, h / 2 + 22);
+
+  ctx.fillStyle = BRAND.gold;
+  ctx.font = `700 26px "${MONO_FONT}"`;
+  drawTracked(ctx, `GOA · ${EVENT_DATES}`, railX, h / 2 + 66, 2);
+
+  ctx.fillStyle = BRAND.cream;
+  ctx.font = `800 30px "${SANS_FONT}"`;
+  drawTracked(ctx, HASHTAG.toUpperCase(), railX, h / 2 + 124, 1.6);
 
   ctx.restore();
 }

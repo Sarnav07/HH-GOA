@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { ArrowsClockwise } from "@phosphor-icons/react";
-import { builderTitle } from "@/lib/title";
+import { builderSerial, builderTitle } from "@/lib/title";
 import CardPreview, { type PreviewHandle } from "./CardPreview";
 import Dropzone from "./Dropzone";
 import Actions from "./Actions";
@@ -19,6 +19,11 @@ export default function Studio() {
 
   const title = useMemo(
     () => (name.trim() ? builderTitle(name, stack, salt) : ""),
+    [name, stack, salt],
+  );
+
+  const serial = useMemo(
+    () => builderSerial(name, stack, salt),
     [name, stack, salt],
   );
 
@@ -48,9 +53,9 @@ export default function Studio() {
         };
 
   const field =
-    "h-12 w-full rounded-[8px] border border-sand/55 bg-indigo/50 px-3.5 font-display text-[15px] text-cream placeholder:text-sand/70 focus:border-terracotta focus:outline-none";
+    "h-12 w-full rounded-[8px] border border-forest/60 bg-cream-lift px-3.5 font-sans text-[15px] text-forest-deep placeholder:text-forest/80 focus:border-pink-deep focus:outline-none";
   const label =
-    "mb-2 block font-mono text-[11px] tracking-[0.18em] text-sand uppercase";
+    "mb-2 block font-mono text-[11px] tracking-[0.18em] text-forest uppercase";
 
   return (
     <div className="grid gap-10 lg:grid-cols-[minmax(0,430px)_minmax(0,1fr)] lg:items-start lg:gap-14">
@@ -64,6 +69,7 @@ export default function Studio() {
           name={name}
           stack={stack}
           title={title}
+          serial={serial}
           photo={photo}
         />
       </motion.div>
@@ -109,8 +115,8 @@ export default function Studio() {
                 onClick={() => setStack(s)}
                 className={`rounded-full border px-3 py-1.5 font-mono text-[11px] transition-colors duration-150 ${
                   stack === s
-                    ? "border-terracotta bg-terracotta/15 text-cream"
-                    : "border-sand/45 text-sand hover:border-cream"
+                    ? "border-pink-deep bg-pink/15 text-forest-deep"
+                    : "border-forest/60 text-forest hover:border-forest"
                 }`}
               >
                 {s}
@@ -122,7 +128,7 @@ export default function Studio() {
         <div>
           <span className={label}>Builder title</span>
           <div className="flex items-center gap-3">
-            <p className="font-display text-[17px] font-bold text-terracotta-lift">
+            <p className="font-sans text-[17px] font-bold text-pink-deep">
               {title || "Add your name to get one"}
             </p>
             {title ? (
@@ -130,7 +136,7 @@ export default function Studio() {
                 type="button"
                 onClick={() => setSalt((s) => s + 1)}
                 aria-label="Generate a different builder title"
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-sand/55 text-sand transition-transform duration-150 hover:border-cream hover:text-cream active:scale-95"
+                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-forest/60 text-forest transition-transform duration-150 hover:border-forest hover:bg-forest hover:text-cream active:scale-95"
               >
                 <ArrowsClockwise size={16} weight="bold" />
               </button>

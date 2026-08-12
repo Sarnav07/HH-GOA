@@ -1,10 +1,32 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Azulejo Dusk - HH Goa 2026
-   Portuguese blue-tile motif over a dusk-indigo ground, laterite terracotta
-   as the single accent. Theme is locked dark for the whole page.
+   Hacker House Goa 2026
+   Vintage Indian travel-poster identity: cream ground, forest green, with gold
+   and hot pink as the two brand accents. Theme is locked light for the whole
+   page. Gold is fill-only here; as text on cream it fails contrast.
    --------------------------------------------------------------------------- */
+
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-latin.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Playfair Display";
+  src: url("/fonts/PlayfairDisplay-latin-ext.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+    U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
 
 @font-face {
   font-family: "Cabinet Grotesk";
@@ -27,6 +49,7 @@
   font-style: normal;
   font-display: swap;
 }
+
 @font-face {
   font-family: "JetBrains Mono";
   src: url("/fonts/JetBrainsMono-latin.woff2") format("woff2");
@@ -49,17 +72,19 @@
 }
 
 @theme {
-  --color-ink: #0e1f3c;
-  --color-ink-deep: #091628;
-  --color-indigo: #16305c;
-  --color-indigo-lift: #1d3d70;
-  --color-tile: #2f5d9e;
-  --color-cream: #f4ede1;
-  --color-sand: #d9c7a7;
-  --color-terracotta: #c75b39;
-  --color-terracotta-lift: #d96f4d;
+  --color-cream: #f0e8d0;
+  --color-cream-lift: #f7f2e2;
+  --color-tan: #e0d8b8;
+  --color-forest: #004838;
+  --color-forest-lift: #065c47;
+  --color-forest-deep: #001a12;
+  --color-gold: #f8d028;
+  --color-gold-deep: #d8a800;
+  --color-pink: #f02878;
+  --color-pink-deep: #c81d5f;
 
-  --font-display: "Cabinet Grotesk", "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-sans: "Cabinet Grotesk", "Helvetica Neue", Arial, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --radius-panel: 16px;
@@ -67,30 +92,29 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
-  background-color: var(--color-ink-deep);
+  background-color: var(--color-cream);
 }
 
 body {
-  background-color: var(--color-ink-deep);
-  color: var(--color-cream);
-  font-family: var(--font-display);
+  background-color: var(--color-cream);
+  color: var(--color-forest-deep);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-/* Focus ring in the accent, visible against the dusk ground. */
+/* Focus ring in pink, the action accent, visible against cream. */
 :where(a, button, input, [tabindex]):focus-visible {
-  outline: 2px solid var(--color-terracotta-lift);
+  outline: 2px solid var(--color-pink);
   outline-offset: 2px;
 }
 
-/* Selection reads as tile blue, keeping the palette locked. */
 ::selection {
-  background: var(--color-terracotta);
+  background: var(--color-pink);
   color: var(--color-cream);
 }
 

@@ -24,6 +24,10 @@ GlobalFonts.registerFromPath(
   join(here, "fonts/JetBrainsMono.ttf"),
   "JetBrains Mono",
 );
+GlobalFonts.registerFromPath(
+  join(here, "fonts/PlayfairDisplay-Black.ttf"),
+  "Playfair Display",
+);
 
 // lib/azulejo.ts builds its tile with document.createElement("canvas").
 (globalThis as unknown as { document: unknown }).document = {
@@ -33,8 +37,14 @@ GlobalFonts.registerFromPath(
   },
 };
 
+const coastMod = await import("../lib/coast");
+const coastPng = await loadImage(join(here, "../public/goa-coast.webp"));
+(coastMod as unknown as { __setCoast?: (i: unknown) => void }).__setCoast?.(
+  coastPng,
+);
+
 const { drawCard, SIZES, emptyState } = await import("../lib/render");
-const { builderTitle } = await import("../lib/title");
+const { builderSerial, builderTitle } = await import("../lib/title");
 
 type AnyCtx = Parameters<typeof drawCard>[0];
 
@@ -61,6 +71,7 @@ async function scene(
   state.name = name;
   state.stack = stack;
   state.title = name ? builderTitle(name, stack) : "";
+  state.serial = builderSerial(name, stack);
   state.zoom = zoom;
   if (photoPath) {
     // drawImage accepts any Skia image; the app's runtime type is ImageBitmap.

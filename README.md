@@ -8,14 +8,31 @@ Built for the HH Goa 2026 shortlisting task, Format B (Builder ID Card).
 
 ## Design
 
-"Azulejo Dusk". The signature is the Portuguese blue-and-white tile geometry
-Goa actually has, over a dusk-indigo ground, with laterite terracotta as the
-single accent. The tile motif is drawn procedurally in `lib/azulejo.ts` and is
-seamless, so it works as a pattern at any scale.
+Follows the official Hacker House Goa builder pass: a vintage Indian
+travel-poster identity in forest green, cream, gold, and hot pink. Palette was
+sampled by histogram off the event artwork and lives in `lib/brand.ts`, which
+both the canvas renderer and the Tailwind `@theme` block read from.
 
-The theme is locked dark across every page. One accent colour, one radius
-system (16px panels, 8px inputs, pill buttons). Display type is Cabinet
-Grotesk, mono is JetBrains Mono, both self-hosted.
+| Token | Value | Role |
+| --- | --- | --- |
+| `cream` | `#F0E8D0` | page ground and card body |
+| `forest` | `#004838` | header block, primary type |
+| `tan` | `#E0D8B8` | inset info panel |
+| `gold` | `#F8D028` | title pill and lockup highlight |
+| `pink` | `#F02878` | actions, hashtag, framing |
+
+Two accents rather than one, because the brand genuinely carries both. Their
+roles are fixed and never swap: gold is the title, pink is action. Gold is
+fill-only on light grounds; as text on cream it fails contrast badly.
+
+The theme is locked light across every page, with one radius system (16px
+panels, 8px inputs, pill buttons). Type is Playfair Display for the lockup and
+names, Cabinet Grotesk for UI, JetBrains Mono for labels, all self-hosted.
+
+The poster furniture (banded sun, palms, contour lines, dot grid, barcode) is
+drawn procedurally in `lib/motifs.ts`. The card header sits over a duotone
+treatment of a Goa coastline photo, pre-processed into `public/goa-coast.webp`
+so rendering it costs one `drawImage` rather than per-frame pixel work.
 
 ## How it works
 
@@ -34,8 +51,8 @@ Two variants:
 Photos are decoded with `createImageBitmap`, which handles jpg/png/webp and
 applies EXIF rotation. HEIC falls back to `heic-to`, imported lazily so the
 wasm never loads for the majority who upload a jpg. Every photo is cover-fitted
-into the window on arrival, then the user can drag to reposition and pinch or
-scroll to zoom. Nobody is asked to crop first.
+into the circular window on arrival, then the user can drag to reposition and
+pinch or use the zoom slider. Nobody is asked to crop first.
 
 Share to X takes two paths. On a phone, `navigator.share` hands the real PNG to
 the X app with the caption already written. Everywhere else the card is

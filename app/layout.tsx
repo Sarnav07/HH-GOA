@@ -9,13 +9,13 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Builder Pass | HH Goa 2026",
+  title: "Builder Pass | Hacker House Goa 2026",
   description:
-    "Upload a photo and get your HH Goa 2026 builder pass, ready to post.",
+    "Upload a photo and get your Hacker House Goa 2026 builder pass, ready to post.",
   openGraph: {
-    title: "Builder Pass | HH Goa 2026",
+    title: "Builder Pass | Hacker House Goa 2026",
     description:
-      "Upload a photo and get your HH Goa 2026 builder pass, ready to post.",
+      "Upload a photo and get your Hacker House Goa 2026 builder pass, ready to post.",
     type: "website",
     url: siteUrl,
   },
@@ -23,8 +23,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#091628",
-  colorScheme: "dark",
+  themeColor: "#f0e8d0",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -32,6 +32,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased">
       <head>
         {/* The card cannot draw until these land, so they are not optional. */}
+        <link
+          rel="preload"
+          href="/fonts/PlayfairDisplay-latin.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <link
           rel="preload"
           href="/fonts/CabinetGrotesk-Extrabold.woff2"

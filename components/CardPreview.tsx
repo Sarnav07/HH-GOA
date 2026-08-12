@@ -15,6 +15,7 @@ import {
   type Variant,
 } from "@/lib/render";
 import { fontsReady } from "@/lib/fonts";
+import { coastReady } from "@/lib/coast";
 
 export type PreviewHandle = {
   /** Renders a variant offscreen at full resolution. */
@@ -25,6 +26,7 @@ type Props = {
   name: string;
   stack: string;
   title: string;
+  serial: string;
   photo: ImageBitmap | null;
 };
 
@@ -39,7 +41,7 @@ type Props = {
  * sixty times a second and stutter badly on a phone.
  */
 const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
-  { name, stack, title, photo },
+  { name, stack, title, serial, photo },
   ref,
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,8 +60,15 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
   }, []);
 
   const state = useCallback(
-    (): CardState => ({ name, stack, title, photo, ...transform.current }),
-    [name, stack, title, photo],
+    (): CardState => ({
+      name,
+      stack,
+      title,
+      serial,
+      photo,
+      ...transform.current,
+    }),
+    [name, stack, title, serial, photo],
   );
 
   const paint = useCallback(() => {
@@ -80,7 +89,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
 
   useEffect(() => {
     let alive = true;
-    fontsReady().then(() => {
+    Promise.all([fontsReady(), coastReady()]).then(() => {
       if (alive) paint();
     });
     return () => {
@@ -100,7 +109,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
     ref,
     () => ({
       async toBlob(variant) {
-        await fontsReady();
+        await Promise.all([fontsReady(), coastReady()]);
         const { w, h } = SIZES[variant];
         const off = document.createElement("canvas");
         off.width = w;
@@ -162,10 +171,9 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
     // Convert the screen delta into the window-relative units the renderer
     // pans in. PHOTO_WINDOW mirrors the values drawBadge lays out with.
     const scale = canvasScale();
-    transform.current.offsetX +=
-      ((e.clientX - drag.current.x) * scale) / PHOTO_WINDOW.w;
-    transform.current.offsetY +=
-      ((e.clientY - drag.current.y) * scale) / PHOTO_WINDOW.h;
+    const d = PHOTO_WINDOW.r * 2;
+    transform.current.offsetX += ((e.clientX - drag.current.x) * scale) / d;
+    transform.current.offsetY += ((e.clientY - drag.current.y) * scale) / d;
     drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
     schedule();
   };
@@ -188,11 +196,11 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
         onPointerCancel={endPointer}
         aria-label={
           photo
-            ? `HH Goa 2026 builder pass for ${name || "your name"}. Drag to reposition your photo.`
-            : "HH Goa 2026 builder pass preview. Upload a photo to fill it in."
+            ? `Hacker House Goa 2026 builder pass for ${name || "your name"}. Drag to reposition your photo.`
+            : "Hacker House Goa 2026 builder pass preview. Upload a photo to fill it in."
         }
         role="img"
-        className={`w-full rounded-[16px] shadow-[0_24px_70px_rgba(9,22,40,0.6)] ${
+        className={`w-full rounded-[16px] shadow-[0_18px_50px_rgba(0,26,18,0.22)] ${
           photo ? "cursor-grab touch-none active:cursor-grabbing" : ""
         }`}
       />
@@ -204,7 +212,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
       */}
       {photo ? (
         <label className="flex items-center gap-3">
-          <span className="font-mono text-[11px] tracking-[0.18em] text-sand uppercase">
+          <span className="font-mono text-[11px] tracking-[0.18em] text-forest uppercase">
             Zoom
           </span>
           <input
@@ -218,7 +226,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
               setZoom(Number(e.target.value));
               schedule();
             }}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-sand/30 accent-terracotta"
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-forest/30 accent-pink-deep"
           />
         </label>
       ) : null}
