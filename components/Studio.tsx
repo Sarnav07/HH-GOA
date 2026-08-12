@@ -8,7 +8,16 @@ import CardPreview, { type PreviewHandle } from "./CardPreview";
 import Dropzone from "./Dropzone";
 import Actions from "./Actions";
 
-const STACKS = ["full-stack", "ML", "infra", "design", "solidity", "mobile"];
+const STACKS = [
+  "frontend",
+  "backend",
+  "full-stack",
+  "ML",
+  "infra",
+  "design",
+  "solidity",
+  "mobile",
+];
 
 export default function Studio() {
   const preview = useRef<PreviewHandle>(null);
