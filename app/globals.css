@@ -118,6 +118,71 @@ body {
   color: var(--color-cream);
 }
 
+/* ---------------------------------------------------------------------------
+   Zoom range.
+   `appearance: none` removes the native track AND thumb in Chrome and Safari,
+   and makes `accent-color` a no-op, so both pseudo-element trees have to be
+   styled by hand. The element is 28px tall purely for the hit area; the visible
+   track is the 6px pseudo-element inside it.
+   --------------------------------------------------------------------------- */
+.zoom-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+}
+
+.zoom-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-forest) 32%, transparent);
+}
+.zoom-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-forest) 32%, transparent);
+}
+
+.zoom-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 999px;
+  background: var(--color-pink-deep);
+  border: 2px solid var(--color-cream);
+  /* Centres the thumb on a 6px track: (6 - 20) / 2. */
+  margin-top: -7px;
+  transition: transform 0.12s ease;
+}
+.zoom-range::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 999px;
+  background: var(--color-pink-deep);
+  border: 2px solid var(--color-cream);
+  transition: transform 0.12s ease;
+}
+
+.zoom-range:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.zoom-range:active::-moz-range-thumb {
+  transform: scale(1.12);
+}
+
+.zoom-range:focus {
+  outline: none;
+}
+.zoom-range:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px var(--color-pink);
+}
+.zoom-range:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px var(--color-pink);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -36,4 +36,14 @@ export const EVENT_TAGLINE = "CODE · CONNECT · CHILL · REPEAT";
 export const EVENT_MISSION = "BUILD · SHIP · REPEAT";
 export const EVENT_MOTTO = "LESS NOISE. MORE SIGNAL.";
 export const HASHTAG = "#FrameInGoa";
-export const TWEET_CAPTION = `I'm building at Hacker House Goa 2026. ${HASHTAG}`;
+
+/**
+ * The prefilled post. Leads with the generated builder class, which is the part
+ * people actually want to show off, and falls back cleanly when there is none.
+ */
+export function tweetCaption(title?: string) {
+  const lines = ["Just got my Hacker House Goa 2026 builder pass."];
+  if (title?.trim()) lines.push("", `Builder class: ${title.trim().toUpperCase()}`);
+  lines.push("", `Goa, 28-31 Oct.`, HASHTAG);
+  return lines.join("\n");
+}

@@ -144,7 +144,7 @@ export default function Studio() {
           </div>
         </div>
 
-        <Actions preview={preview} name={name} ready={ready} />
+        <Actions preview={preview} name={name} title={title} ready={ready} />
       </motion.div>
     </div>
   );

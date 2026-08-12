@@ -4,6 +4,15 @@ import { hasBlobStore, newId, storeCard } from "@/lib/store";
 /** Generous for a PNG of this size, tight enough to refuse anything odd. */
 const MAX_UPLOAD = 8 * 1024 * 1024;
 
+/**
+ * Capability probe. The client uses this to decide whether to offer link
+ * sharing at all, so an unconfigured deployment shows no affordance rather
+ * than a button that always fails.
+ */
+export async function GET() {
+  return NextResponse.json({ configured: hasBlobStore() });
+}
+
 export async function POST(request: Request) {
   if (!hasBlobStore()) {
     return NextResponse.json(

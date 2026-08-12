@@ -143,15 +143,98 @@ await evaluate(`(() => {
 })()`);
 await sleep(900);
 
-const drew = await evaluate(`(() => {
+await send("Emulation.setDeviceMetricsOverride", {
+  width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false,
+});
+await sleep(400);
+
+// Zoom slider: prove it reaches drawCard, not merely the DOM. Sampling a pixel
+// inside the photo circle before and after; a working slider rescales the photo
+// so the sample must change.
+const zoom = await evaluate(`(async () => {
   const c = document.querySelector("canvas");
   const ctx = c.getContext("2d");
-  // Sample a pixel inside the photo window; if the photo drew, it is not the
-  // flat empty-state indigo.
-  const d = ctx.getImageData(540, 640, 1, 1).data;
-  return { w: c.width, h: c.height, pixel: [d[0], d[1], d[2]] };
+  // Hash a block inside the photo circle. A single pixel can sit in a flat
+  // region and stay identical across scales even when the render did change.
+  const px = () => {
+    const d = ctx.getImageData(430, 430, 220, 220).data;
+    let h = 2166136261;
+    for (let i = 0; i < d.length; i += 17) { h ^= d[i]; h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  };
+  const before = px();
+
+  const el = document.querySelector("input[type=range]");
+  if (!el) return { error: "no range input" };
+  const b = el.getBoundingClientRect();
+  window.__zoomBox = { x: b.x + b.width * 0.7, y: b.y + b.height / 2 };
+  window.__px = px;
+  return { before, height: Math.round(b.height), box: window.__zoomBox };
 })()`);
-console.log("canvas:", JSON.stringify(drew));
+console.log("slider hit area:", zoom.height + "px");
+
+// Drive the slider with a real mouse drag. Synthetic events leave too much
+// doubt about whether React's onChange actually ran.
+const { x, y } = zoom.box;
+await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1, buttons: 1 });
+await send("Input.dispatchMouseEvent", { type: "mouseMoved", x: x + 4, y, button: "left", buttons: 1 });
+await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: x + 4, y, button: "left", buttons: 0 });
+await sleep(500);
+
+const afterDrag = await evaluate(`(() => ({
+  after: window.__px(),
+  value: document.querySelector("input[type=range]").value,
+}))()`);
+console.log("drag zoom:", afterDrag.value, "changed:", afterDrag.after !== zoom.before);
+
+// Keyboard operation was the whole reason for choosing a range input over
+// wheel-zoom, so it is asserted rather than assumed.
+await evaluate(`(() => { document.querySelector("input[type=range]").focus(); return true; })()`);
+const beforeKeys = await evaluate(`window.__px()`);
+for (let i = 0; i < 12; i++) {
+  await send("Input.dispatchKeyEvent", { type: "rawKeyDown", windowsVirtualKeyCode: 39, code: "ArrowRight", key: "ArrowRight" });
+  await send("Input.dispatchKeyEvent", { type: "keyUp", windowsVirtualKeyCode: 39, code: "ArrowRight", key: "ArrowRight" });
+}
+await sleep(400);
+const afterKeys = await evaluate(`({ px: window.__px(), value: document.querySelector("input[type=range]").value })`);
+console.log("keyboard zoom:", afterKeys.value, "changed:", afterKeys.px !== beforeKeys);
+
+// Share to X. The composer must open on desktop even with no blob store
+// configured, which is the case that used to dead-end on a 501.
+await evaluate(`(() => {
+  window.__opened = [];
+  window.open = (u) => { window.__opened.push(u); return { closed: false }; };
+  return true;
+})()`);
+
+const shareBtn = await evaluate(`(() => {
+  const b = [...document.querySelectorAll("button")].find(x => x.textContent.includes("Share to X"));
+  const r = b.getBoundingClientRect();
+  return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+})()`);
+await send("Input.dispatchMouseEvent", { type: "mousePressed", x: shareBtn.x, y: shareBtn.y, button: "left", clickCount: 1, buttons: 1 });
+await send("Input.dispatchMouseEvent", { type: "mouseReleased", x: shareBtn.x, y: shareBtn.y, button: "left", buttons: 0 });
+await sleep(1800);
+
+const shared = await evaluate(`({
+  opened: window.__opened,
+  status: (document.querySelector("[role=status]") || document.querySelector("[role=alert]") || {}).textContent || null,
+})`);
+const intentUrl = shared.opened[0] ?? "";
+console.log("share opened X:", intentUrl.startsWith("https://x.com/intent/tweet"));
+console.log("caption has hashtag:", decodeURIComponent(intentUrl).includes("#FrameInGoa"));
+console.log("share status:", JSON.stringify(shared.status));
+
+// Reset zoom so the screenshots show the default framing.
+await evaluate(`(() => {
+  const el = document.querySelector("input[type=range]");
+  const set = Object.getOwnPropertyDescriptor(
+    window.HTMLInputElement.prototype, "value").set;
+  set.call(el, "1");
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+  return true;
+})()`);
+await sleep(400);
 
 await shoot("page-mobile.png", 390, 844);
 await shoot("page-desktop.png", 1440, 1000);

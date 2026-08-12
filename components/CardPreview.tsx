@@ -52,31 +52,23 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
   const pinchStart = useRef<{ dist: number; zoom: number } | null>(null);
   const zoomRef = useRef<HTMLInputElement>(null);
 
-  /** Single place that changes zoom, so the slider never drifts from state. */
-  const setZoom = useCallback((next: number) => {
-    const clamped = Math.min(4, Math.max(1, next));
-    transform.current.zoom = clamped;
-    if (zoomRef.current) zoomRef.current.value = String(clamped);
-  }, []);
+  // Latest props in a ref so paint() can stay referentially stable. When paint
+  // changes identity every keystroke, so do schedule() and every effect that
+  // depends on it, and effects meant to run once per photo start re-running.
+  const props = useRef({ name, stack, title, serial, photo });
+  props.current = { name, stack, title, serial, photo };
 
-  const state = useCallback(
-    (): CardState => ({
-      name,
-      stack,
-      title,
-      serial,
-      photo,
-      ...transform.current,
-    }),
-    [name, stack, title, serial, photo],
+  const cardState = useCallback(
+    (): CardState => ({ ...props.current, ...transform.current }),
+    [],
   );
 
   const paint = useCallback(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
-    drawCard(ctx, state(), "card");
-  }, [state]);
+    drawCard(ctx, cardState(), "card");
+  }, [cardState]);
 
   /** Coalesces bursts of pointer events into one paint per animation frame. */
   const schedule = useCallback(() => {
@@ -87,16 +79,46 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
     });
   }, [paint]);
 
+  /**
+   * Clamps and stores the zoom. Deliberately does NOT touch the slider element:
+   * writing .value back to a range input from inside its own onChange fights
+   * the browser's drag state and makes the control feel stuck.
+   */
+  const applyZoom = useCallback((next: number) => {
+    const clamped = Math.min(4, Math.max(1, next));
+    transform.current.zoom = clamped;
+    return clamped;
+  }, []);
+
+  /** Pinch drives the value, so there the slider is a passive readout. */
+  const applyZoomFromPinch = useCallback(
+    (next: number) => {
+      const clamped = applyZoom(next);
+      if (zoomRef.current) zoomRef.current.value = String(clamped);
+    },
+    [applyZoom],
+  );
+
+  // Redraw whenever the copy changes.
+  useEffect(() => {
+    schedule();
+  }, [name, stack, title, serial, schedule]);
+
   useEffect(() => {
     let alive = true;
     Promise.all([fontsReady(), coastReady()]).then(() => {
-      if (alive) paint();
+      if (alive) schedule();
     });
     return () => {
       alive = false;
-      if (frame.current) cancelAnimationFrame(frame.current);
+      if (frame.current) {
+        cancelAnimationFrame(frame.current);
+        // Zeroing matters: schedule() early-returns while this is non-zero, so
+        // leaving a stale id here permanently kills every future repaint.
+        frame.current = 0;
+      }
     };
-  }, [paint]);
+  }, [schedule]);
 
   // A fresh photo starts from a plain cover fit.
   useEffect(() => {
@@ -116,7 +138,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
         off.height = h;
         const ctx = off.getContext("2d");
         if (!ctx) throw new Error("Canvas 2D context unavailable");
-        drawCard(ctx, state(), variant);
+        drawCard(ctx, cardState(), variant);
 
         return new Promise<Blob>((resolve, reject) => {
           off.toBlob(
@@ -127,7 +149,7 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
         });
       },
     }),
-    [state],
+    [cardState],
   );
 
   /* ------------------------------------------------------------ gestures */
@@ -162,7 +184,9 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
     if (pinch.current.size === 2 && pinchStart.current) {
       const [a, b] = [...pinch.current.values()];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
-      setZoom((pinchStart.current.zoom * dist) / pinchStart.current.dist);
+      applyZoomFromPinch(
+        (pinchStart.current.zoom * dist) / pinchStart.current.dist,
+      );
       schedule();
       return;
     }
@@ -223,10 +247,11 @@ const CardPreview = forwardRef<PreviewHandle, Props>(function CardPreview(
             step={0.01}
             defaultValue={1}
             onChange={(e) => {
-              setZoom(Number(e.target.value));
+              applyZoom(Number(e.target.value));
               schedule();
             }}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-forest/30 accent-pink-deep"
+            aria-label="Zoom the photo"
+            className="zoom-range flex-1"
           />
         </label>
       ) : null}
